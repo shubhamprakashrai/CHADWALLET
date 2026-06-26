@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth, type AuthMethod } from '@/auth/auth-context';
@@ -52,7 +52,11 @@ export default function SignInScreen() {
           label="Continue with Apple"
           loading={pending === 'apple'}
           disabled={loggingIn}
-          onPress={() => onLogin('apple')}
+          // Apple Sign-In is wired but pending its own Apple Developer OAuth
+          // credentials (Services ID + signing key). Use Google for now.
+          onPress={() =>
+            Alert.alert('Apple Sign-In', 'Coming soon — please continue with Google for now.')
+          }
         />
         <SocialButton
           icon="logo-google"

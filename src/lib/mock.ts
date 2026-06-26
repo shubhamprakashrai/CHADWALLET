@@ -19,6 +19,8 @@ export type Token = {
   series: number[];
   /** real token logo (from Birdeye); falls back to the colored letter avatar */
   logoURI?: string;
+  /** 24h trading volume in USD (for the "Most Traded" filter) */
+  volume?: number;
 };
 
 /** Deterministic pseudo-random series so charts stay stable across re-renders. */
@@ -92,6 +94,27 @@ export const HOLDINGS: Holding[] = [
   { tokenId: 'unc', name: 'ChadWallet', symbol: 'CHAD', color: '#22E06B', amount: '173.7M', value: 693.29, change: 0.01 },
   { tokenId: 'dumb-money', name: 'Dumb Money', symbol: 'DUMB', color: '#F59E0B', amount: '12.4M', value: 48.21, change: 8.63 },
   { tokenId: 'schizo-signals', name: 'SCHIZO SIGNALS', symbol: 'SCHIZO', color: '#F472B6', amount: '2.1M', value: 32.48, change: 105.0 },
+];
+
+export type Activity = {
+  id: string;
+  type: 'buy' | 'sell' | 'send' | 'receive';
+  tokenSymbol: string;
+  tokenName: string;
+  color: string;
+  amount: string;
+  value: number;
+  time: string;
+  logoURI?: string;
+};
+
+/** Demo wallet activity (shown until a real funded wallet has on-chain history). */
+export const ACTIVITIES: Activity[] = [
+  { id: 'a1', type: 'buy', tokenSymbol: 'CHAD', tokenName: 'ChadWallet', color: '#22E06B', amount: '173.7M', value: 50, time: '2m ago' },
+  { id: 'a2', type: 'sell', tokenSymbol: 'DUMB', tokenName: 'Dumb Money', color: '#F59E0B', amount: '4.2M', value: 18.4, time: '1h ago' },
+  { id: 'a3', type: 'receive', tokenSymbol: 'SOL', tokenName: 'Solana', color: '#22D3EE', amount: '0.5', value: 34.5, time: '3h ago' },
+  { id: 'a4', type: 'buy', tokenSymbol: 'SCHIZO', tokenName: 'SCHIZO SIGNALS', color: '#F472B6', amount: '2.1M', value: 25, time: '5h ago' },
+  { id: 'a5', type: 'send', tokenSymbol: 'SOL', tokenName: 'Solana', color: '#22D3EE', amount: '0.2', value: 13.8, time: '1d ago' },
 ];
 
 export const PORTFOLIO = {

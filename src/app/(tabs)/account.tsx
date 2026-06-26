@@ -7,10 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/auth-context';
 import { ActionCircle } from '@/components/action-circle';
+import { ActivityRow } from '@/components/activity-row';
 import { Avatar } from '@/components/avatar';
 import { ChangeBadge } from '@/components/change-badge';
 import { LineChart } from '@/components/line-chart';
 import { SegmentTabs } from '@/components/segment-tabs';
+import { useActivity } from '@/hooks/use-activity';
 import { usePortfolio } from '@/hooks/use-portfolio';
 import { compact, formatUsd } from '@/lib/format';
 import { HOLDINGS, PORTFOLIO, RANGE_TABS } from '@/lib/mock';
@@ -33,6 +35,9 @@ export default function AccountScreen() {
   const { data: portfolio, isRefetching, refetch } = usePortfolio(walletAddress);
   const holdings = portfolio?.holdings ?? HOLDINGS;
   const netWorth = portfolio?.netWorth ?? PORTFOLIO.netWorth;
+
+  // recent wallet activity (real tx signatures from Alchemy, demo fallback)
+  const { data: activities = [] } = useActivity(walletAddress);
 
   const copyAddress = useCallback(async () => {
     await Clipboard.setStringAsync(walletAddress);
@@ -97,6 +102,12 @@ export default function AccountScreen() {
               <ChangeBadge change={h.change} />
             </View>
           </View>
+        ))}
+
+        {/* activity */}
+        <Text className="mb-1 mt-7 px-4 text-xl font-bold text-text">Activity</Text>
+        {activities.map((a) => (
+          <ActivityRow key={a.id} item={a} />
         ))}
 
         {/* rewards */}

@@ -48,6 +48,7 @@ type BirdeyeTrending = {
     price?: number;
     marketcap?: number;
     price24hChangePercent?: number;
+    volume24hUSD?: number;
   }>;
 };
 
@@ -62,6 +63,7 @@ function mapToken(t: BirdeyeTrending['tokens'][number]): Token {
     color: colorFromString(t.address),
     logoURI: t.logoURI,
     series: [], // list sparklines would blow the 1 req/s limit; charts load on detail
+    volume: t.volume24hUSD ?? 0,
   };
 }
 

@@ -52,3 +52,14 @@ export async function getTokenAccounts(address: string): Promise<RawHolding[]> {
     })
     .filter((h) => h.amount > 0);
 }
+
+export type RawActivity = { signature: string; time: number | null; failed: boolean };
+
+/** Recent transaction signatures for a wallet (the wallet's on-chain activity). */
+export async function getRecentActivity(address: string, limit = 10): Promise<RawActivity[]> {
+  const r = await rpc<Array<{ signature: string; blockTime: number | null; err: unknown }>>(
+    'getSignaturesForAddress',
+    [address, { limit }],
+  );
+  return r.map((s) => ({ signature: s.signature, time: s.blockTime, failed: s.err != null }));
+}

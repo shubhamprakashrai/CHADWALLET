@@ -4,12 +4,14 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/auth-context';
+import { ActivityRow } from '@/components/activity-row';
 import { Avatar } from '@/components/avatar';
 import { ChangeBadge } from '@/components/change-badge';
 import { LineChart } from '@/components/line-chart';
 import { PillButton } from '@/components/pill-button';
 import { ScreenHeader } from '@/components/screen-header';
 import { SegmentTabs } from '@/components/segment-tabs';
+import { useActivity } from '@/hooks/use-activity';
 import { useBuyQuote } from '@/hooks/use-quote';
 import { useToken, useTokenChart } from '@/hooks/use-token';
 import { useWatchlist } from '@/hooks/use-watchlist';
@@ -35,6 +37,7 @@ export default function TokenDetailScreen() {
   const { data: series = [] } = useTokenChart(id, range as ChartRange);
   const { isStarred, toggle } = useWatchlist(user?.id);
   const { data: quote, isFetching: quoting } = useBuyQuote(id, buyUsd);
+  const { data: activities = [] } = useActivity(user?.walletAddress);
   const starred = isStarred(id);
 
   if (isLoading && !token) {
@@ -160,6 +163,12 @@ export default function TokenDetailScreen() {
           <Position label="Value" value={formatUsd(693.29)} />
           <Position label="PnL" value="+$214.50" positive />
         </View>
+
+        {/* your activity */}
+        <Text className="mb-1 mt-7 px-4 text-xl font-bold text-text">Your activity</Text>
+        {activities.slice(0, 4).map((a) => (
+          <ActivityRow key={a.id} item={a} />
+        ))}
 
         <Text className="mt-4 px-4 text-xs text-text-tertiary">
           Price {formatTokenPrice(token.price)} · MCap ${compact(token.mcap)}

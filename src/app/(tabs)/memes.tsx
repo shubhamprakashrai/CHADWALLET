@@ -1,26 +1,46 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SegmentTabs } from '@/components/segment-tabs';
 import { TokenRow } from '@/components/token-row';
 import { useTrending } from '@/hooks/use-trending';
+import type { Token } from '@/lib/mock';
 
-const FILTERS = ['Trending', 'New', 'Most Traded', 'Gainers', 'Stocks'] as const;
+const FILTERS = ['Trending', 'Gainers', 'Losers', 'Most Traded', 'Top MCap'] as const;
+
+/** Sorts the trending list according to the selected filter chip. */
+function applyFilter(tokens: Token[], filter: string): Token[] {
+  const list = [...tokens];
+  switch (filter) {
+    case 'Gainers':
+      return list.sort((a, b) => b.change - a.change);
+    case 'Losers':
+      return list.sort((a, b) => a.change - b.change);
+    case 'Most Traded':
+      return list.sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
+    case 'Top MCap':
+      return list.sort((a, b) => b.mcap - a.mcap);
+    default:
+      return list; // Trending = Birdeye's rank order
+  }
+}
 
 /**
- * MEMES ("/memes") — the Trending tokens list (a required screen), now powered
- * by REAL Birdeye data via useTrending(). Pull-to-refresh calls refetch() for a
- * genuine network refresh; loading/error states come from React Query.
+ * MEMES ("/memes") — the Trending tokens list (a required screen), powered by
+ * REAL Birdeye data via useTrending(). The filter chips re-sort the list;
+ * pull-to-refresh calls refetch() for a genuine network refresh.
  */
 export default function MemesScreen() {
   const [filter, setFilter] = useState<string>('Trending');
   const { data: tokens = [], isLoading, isError, isRefetching, refetch } = useTrending();
 
+  const sorted = useMemo(() => applyFilter(tokens, filter), [tokens, filter]);
+
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-bg">
       <FlatList
-        data={tokens}
+        data={sorted}
         keyExtractor={(t) => t.id}
         renderItem={({ item }) => <TokenRow token={item} sparkline />}
         refreshControl={
