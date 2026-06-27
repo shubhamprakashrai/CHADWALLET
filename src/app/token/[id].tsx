@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/auth-context';
@@ -149,10 +149,29 @@ export default function TokenDetailScreen() {
         {/* buy / sell */}
         <View className="mt-3 flex-row gap-3 px-4">
           <View className="flex-1">
-            <PillButton label="Buy" variant="primary" />
+            <PillButton
+              label="Buy"
+              variant="primary"
+              onPress={() =>
+                Alert.alert(
+                  'Buy ' + token.symbol,
+                  `Buy ${buyUsd ? '$' + buyUsd + ' of ' : ''}${token.symbol}? Confirm with your wallet.`,
+                  [{ text: 'Cancel', style: 'cancel' }, { text: 'Buy' }],
+                )
+              }
+            />
           </View>
           <View className="flex-1">
-            <PillButton label="Sell" variant="danger" />
+            <PillButton
+              label="Sell"
+              variant="danger"
+              onPress={() =>
+                Alert.alert('Sell ' + token.symbol, `Sell ${token.symbol}? Confirm with your wallet.`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Sell' },
+                ])
+              }
+            />
           </View>
         </View>
 

@@ -1,5 +1,6 @@
 import '@/global.css';
 
+import { PrivyProvider } from '@privy-io/expo';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -27,21 +28,18 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
-        {/*
-          🔁 REAL PRIVY (do last, needs a dev build — not Expo Go). Re-enable by:
-          1. `import { PrivyProvider } from '@privy-io/expo';`
-          2. wrap <AuthProvider> with:
-             <PrivyProvider
-               appId={process.env.EXPO_PUBLIC_PRIVY_APP_ID!}
-               clientId={process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID!}
-               config={{ embedded: { solana: { createOnLogin: 'users-without-wallets' } } }}>
-          3. copy auth-privy.tsx → auth-context.tsx
-          For now the MOCK AuthProvider runs fine in Expo Go without Privy. */}
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <RootNavigator />
-          </AuthProvider>
-        </QueryClientProvider>
+        {/* PrivyProvider must wrap anything using Privy hooks (our AuthProvider).
+            It auto-creates a Solana embedded wallet for new users on login. */}
+        <PrivyProvider
+          appId={process.env.EXPO_PUBLIC_PRIVY_APP_ID!}
+          clientId={process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID!}
+          config={{ embedded: { solana: { createOnLogin: 'users-without-wallets' } } }}>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <RootNavigator />
+            </AuthProvider>
+          </QueryClientProvider>
+        </PrivyProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
