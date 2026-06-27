@@ -1,20 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth, type AuthMethod } from '@/auth/auth-context';
 
 /**
- * SIGN-IN  ("/(auth)/sign-in") — the gate. Tapping a button calls login(),
- * which (today) mocks OAuth and mints a wallet; the root layout then redirects
- * into the tabs automatically once `user` becomes non-null.
+ * SIGN-IN  ("/(auth)/sign-in") — the gate. Privy email (one-time code) + Google,
+ * per the spec. The root layout redirects into the tabs once `user` becomes
+ * non-null, so we don't navigate manually here.
  */
 export default function SignInScreen() {
-  const { login, loggingIn } = useAuth();
-  // remember which button is spinning so only that one shows a loader
+  const { login, loggingIn, sendEmailCode, loginWithEmail } = useAuth();
+  // remember which social button is spinning so only that one shows a loader
   const [pending, setPending] = useState<AuthMethod | null>(null);
+
+  // email one-time-code flow
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [emailBusy, setEmailBusy] = useState(false);
 
   const onLogin = async (method: AuthMethod) => {
     setPending(method);
@@ -25,11 +40,42 @@ export default function SignInScreen() {
     }
   };
 
+  const onSendCode = async () => {
+    if (!email.includes('@') || email.trim().length < 5) {
+      Alert.alert('Enter a valid email', 'e.g. you@example.com');
+      return;
+    }
+    setEmailBusy(true);
+    try {
+      await sendEmailCode(email);
+      setCodeSent(true);
+    } catch (e) {
+      Alert.alert('Could not send code', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setEmailBusy(false);
+    }
+  };
+
+  const onVerify = async () => {
+    if (code.trim().length < 4) {
+      Alert.alert('Enter the code', 'Check your email for the 6-digit code.');
+      return;
+    }
+    setEmailBusy(true);
+    try {
+      await loginWithEmail(email, code);
+      // success → the root layout redirects into the tabs automatically
+    } catch (e) {
+      Alert.alert('Invalid code', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setEmailBusy(false);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-bg">
       {/* logo + wordmark, centered */}
       <View className="flex-1 items-center justify-center gap-5 px-8">
-        {/* white app-icon tile with the dark logo (matches the real splash) */}
         <View className="h-28 w-28 items-center justify-center overflow-hidden rounded-3xl bg-white">
           <Image
             source={require('@/assets/images/chad-light.png')}
@@ -45,31 +91,102 @@ export default function SignInScreen() {
         </View>
       </View>
 
-      {/* social login buttons */}
-      <View className="gap-3 px-6 pb-4">
-        <SocialButton
-          icon="logo-apple"
-          label="Continue with Apple"
-          loading={pending === 'apple'}
-          disabled={loggingIn}
-          // Apple Sign-In is wired but pending its own Apple Developer OAuth
-          // credentials (Services ID + signing key). Use Google for now.
-          onPress={() =>
-            Alert.alert('Apple Sign-In', 'Coming soon — please continue with Google for now.')
-          }
-        />
-        <SocialButton
-          icon="logo-google"
-          label="Continue with Google"
-          loading={pending === 'google'}
-          disabled={loggingIn}
-          onPress={() => onLogin('google')}
-        />
-        <Text className="mt-2 text-center text-xs text-text-tertiary">
-          By continuing you agree to the Terms & Privacy Policy
-        </Text>
-      </View>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View className="gap-3 px-6 pb-4">
+          {/* EMAIL one-time-code flow */}
+          {!codeSent ? (
+            <>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor="#5B6573"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                editable={!emailBusy}
+                className="h-14 rounded-full bg-surface px-5 text-base text-text"
+              />
+              <PrimaryButton label="Continue with Email" loading={emailBusy} onPress={onSendCode} />
+            </>
+          ) : (
+            <>
+              <Text className="text-center text-sm text-text-secondary">
+                Enter the code sent to {email}
+              </Text>
+              <TextInput
+                value={code}
+                onChangeText={setCode}
+                placeholder="6-digit code"
+                placeholderTextColor="#5B6573"
+                keyboardType="number-pad"
+                maxLength={6}
+                editable={!emailBusy}
+                className="h-14 rounded-full bg-surface px-5 text-center text-lg tracking-[8px] text-text"
+              />
+              <PrimaryButton label="Verify & Sign in" loading={emailBusy} onPress={onVerify} />
+              <Pressable onPress={() => { setCodeSent(false); setCode(''); }}>
+                <Text className="text-center text-xs text-text-tertiary">Use a different email</Text>
+              </Pressable>
+            </>
+          )}
+
+          {/* divider */}
+          <View className="my-1 flex-row items-center gap-3">
+            <View className="h-px flex-1 bg-surface2" />
+            <Text className="text-xs text-text-tertiary">or</Text>
+            <View className="h-px flex-1 bg-surface2" />
+          </View>
+
+          {/* social login */}
+          <SocialButton
+            icon="logo-google"
+            label="Continue with Google"
+            loading={pending === 'google'}
+            disabled={loggingIn || emailBusy}
+            onPress={() => onLogin('google')}
+          />
+          <SocialButton
+            icon="logo-apple"
+            label="Continue with Apple"
+            loading={pending === 'apple'}
+            disabled={loggingIn || emailBusy}
+            // Apple Sign-In is wired but pending its own Apple Developer OAuth
+            // credentials (Services ID + signing key). Use email or Google for now.
+            onPress={() =>
+              Alert.alert('Apple Sign-In', 'Coming soon — please use email or Google for now.')
+            }
+          />
+          <Text className="mt-2 text-center text-xs text-text-tertiary">
+            By continuing you agree to the Terms & Privacy Policy
+          </Text>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+/** Green primary CTA (used for the email flow). */
+function PrimaryButton({
+  label,
+  loading,
+  onPress,
+}: {
+  label: string;
+  loading?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={loading}
+      className="h-14 w-full flex-row items-center justify-center rounded-full bg-primary active:opacity-80">
+      {loading ? (
+        <ActivityIndicator color="#0A0D12" />
+      ) : (
+        <Text className="text-base font-semibold text-primary-fg">{label}</Text>
+      )}
+    </Pressable>
   );
 }
 

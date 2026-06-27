@@ -1,5 +1,6 @@
 import {
   useEmbeddedSolanaWallet,
+  useLoginWithEmail,
   useLoginWithOAuth,
   usePrivy,
 } from '@privy-io/expo';
@@ -21,7 +22,7 @@ import { createContext, useCallback, useContext, useState } from 'react';
  * (`npx expo run:ios`), NOT in Expo Go.
  */
 
-export type AuthMethod = 'google' | 'apple';
+export type AuthMethod = 'google' | 'apple' | 'email';
 
 export type AuthUser = {
   id: string;
@@ -37,6 +38,10 @@ type AuthState = {
   ready: boolean; // Privy secure context loaded (safe to read auth + wallet)
   loggingIn: boolean; // a login() call is in flight
   login: (method: AuthMethod) => Promise<void>;
+  /** Email login step 1 — sends a one-time code to the address. */
+  sendEmailCode: (email: string) => Promise<void>;
+  /** Email login step 2 — verifies the code and signs the user in. */
+  loginWithEmail: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -45,6 +50,7 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user: privyUser, isReady, logout: privyLogout } = usePrivy();
   const { login: oauthLogin } = useLoginWithOAuth();
+  const { sendCode, loginWithCode } = useLoginWithEmail();
   const solana = useEmbeddedSolanaWallet();
   const [loggingIn, setLoggingIn] = useState(false);
 
@@ -53,14 +59,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const accounts = privyUser?.linked_accounts ?? [];
   const google = accounts.find((a) => a.type === 'google_oauth');
   const apple = accounts.find((a) => a.type === 'apple_oauth');
+  const emailAcct = accounts.find((a) => a.type === 'email') as { address?: string } | undefined;
   const oauth = (google ?? apple) as { email?: string; name?: string } | undefined;
+  const email = oauth?.email ?? emailAcct?.address ?? '';
   const user: AuthUser | null = privyUser
     ? {
         id: privyUser.id,
         // Google/Apple display name; fall back to the email prefix.
-        name: oauth?.name ?? oauth?.email?.split('@')[0] ?? 'User',
-        email: oauth?.email ?? '',
-        method: google ? 'google' : 'apple',
+        name: oauth?.name ?? email.split('@')[0] ?? 'User',
+        email,
+        method: google ? 'google' : apple ? 'apple' : 'email',
         walletAddress,
       }
     : null;
@@ -70,7 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoggingIn(true);
       try {
         // Opens the Google/Apple OAuth flow in a web browser, then returns.
-        await oauthLogin({ provider: method });
+        // (email uses loginWithEmail, never this path — so narrow off 'email')
+        await oauthLogin({ provider: method as 'google' | 'apple' });
       } finally {
         setLoggingIn(false);
       }
@@ -78,12 +87,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [oauthLogin],
   );
 
+  const sendEmailCode = useCallback(
+    async (emailAddr: string) => {
+      await sendCode({ email: emailAddr.trim() });
+    },
+    [sendCode],
+  );
+
+  const loginWithEmail = useCallback(
+    async (emailAddr: string, code: string) => {
+      setLoggingIn(true);
+      try {
+        await loginWithCode({ email: emailAddr.trim(), code: code.trim() });
+      } finally {
+        setLoggingIn(false);
+      }
+    },
+    [loginWithCode],
+  );
+
   const logout = useCallback(async () => {
     await privyLogout();
   }, [privyLogout]);
 
   return (
-    <AuthContext.Provider value={{ user, ready: isReady, loggingIn, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, ready: isReady, loggingIn, login, sendEmailCode, loginWithEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );
