@@ -53,6 +53,18 @@ export async function getTokenAccounts(address: string): Promise<RawHolding[]> {
     .filter((h) => h.amount > 0);
 }
 
+/** Raw balance (atomic units) of one SPL token in a wallet — for selling. */
+export async function getTokenBalance(address: string, mint: string): Promise<number> {
+  const r = await rpc<{
+    value: Array<{ account: { data: { parsed: { info: { tokenAmount: { amount: string } } } } } }>;
+  }>('getTokenAccountsByOwner', [
+    address,
+    { mint },
+    { encoding: 'jsonParsed', commitment: 'confirmed' },
+  ]);
+  return r.value.reduce((sum, acc) => sum + Number(acc.account.data.parsed.info.tokenAmount.amount), 0);
+}
+
 export type RawActivity = { signature: string; time: number | null; failed: boolean };
 
 /** Recent transaction signatures for a wallet (the wallet's on-chain activity). */

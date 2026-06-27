@@ -43,6 +43,7 @@ export default function TokenDetailScreen() {
   const trade = useTrade();
   const { data: solPrice = 0 } = useSolPrice();
   const [buying, setBuying] = useState(false);
+  const [selling, setSelling] = useState(false);
   const starred = isStarred(id);
 
   if (isLoading && !token) {
@@ -181,10 +182,25 @@ export default function TokenDetailScreen() {
             <PillButton
               label="Sell"
               variant="danger"
+              loading={selling}
               onPress={() =>
-                Alert.alert('Sell ' + token.symbol, `Sell ${token.symbol}? Confirm with your wallet.`, [
+                Alert.alert('Sell ' + token.symbol, `Sell your entire ${token.symbol} balance for SOL?`, [
                   { text: 'Cancel', style: 'cancel' },
-                  { text: 'Sell' },
+                  {
+                    text: 'Sell',
+                    style: 'destructive',
+                    onPress: async () => {
+                      setSelling(true);
+                      try {
+                        const sig = await trade.sell(id);
+                        Alert.alert('✅ Sold ' + token.symbol, `On-chain! Tx ${sig.slice(0, 10)}…`);
+                      } catch (e) {
+                        Alert.alert('Sell failed', e instanceof Error ? e.message : 'Please try again.');
+                      } finally {
+                        setSelling(false);
+                      }
+                    },
+                  },
                 ])
               }
             />

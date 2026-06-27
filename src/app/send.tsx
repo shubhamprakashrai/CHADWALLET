@@ -6,22 +6,46 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NumPad } from '@/components/num-pad';
 import { PillButton } from '@/components/pill-button';
 import { ScreenHeader } from '@/components/screen-header';
+import { useSolPrice } from '@/hooks/use-sol-price';
+import { useTrade } from '@/hooks/use-trade';
 
-/** SEND ("/send") — amount keypad + recipient address. The transfer is signed by the
- *  Privy embedded wallet (wired with the dev build); here it confirms the details. */
+/** SEND ("/send") — amount keypad + recipient. Sends real SOL signed by the Privy wallet. */
 export default function SendScreen() {
   const router = useRouter();
   const [amount, setAmount] = useState('0');
   const [to, setTo] = useState('');
+  const [sending, setSending] = useState(false);
+  const trade = useTrade();
+  const { data: solPrice = 0 } = useSolPrice();
 
   const onSend = () => {
     if (!to.trim()) {
-      Alert.alert('Recipient needed', 'Enter a wallet address or @username to send to.');
+      Alert.alert('Recipient needed', 'Enter a wallet address to send to.');
       return;
     }
-    Alert.alert('Confirm send', `Send $${amount} to ${to.trim()}? Confirm with your wallet.`, [
+    if (!solPrice) {
+      Alert.alert('One sec', 'Fetching SOL price — tap Send again.');
+      return;
+    }
+    const lamports = (Number(amount) / solPrice) * 1_000_000_000;
+    Alert.alert('Confirm send', `Send $${amount} (≈ ${(lamports / 1e9).toFixed(4)} SOL) to ${to.trim()}?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Send', onPress: () => router.back() },
+      {
+        text: 'Send',
+        onPress: async () => {
+          setSending(true);
+          try {
+            const sig = await trade.sendSol(to.trim(), lamports);
+            Alert.alert('✅ Sent', `On-chain! Tx ${sig.slice(0, 10)}…`, [
+              { text: 'Done', onPress: () => router.back() },
+            ]);
+          } catch (e) {
+            Alert.alert('Send failed', e instanceof Error ? e.message : 'Please try again.');
+          } finally {
+            setSending(false);
+          }
+        },
+      },
     ]);
   };
 
@@ -48,7 +72,7 @@ export default function SendScreen() {
       </View>
 
       <View className="px-4">
-        <PillButton label="Send" onPress={onSend} disabled={amount === '0'} />
+        <PillButton label="Send" onPress={onSend} loading={sending} disabled={amount === '0'} />
       </View>
 
       <NumPad value={amount} onChange={setAmount} />
