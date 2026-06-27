@@ -20,6 +20,7 @@ export type AuthMethod = 'google' | 'apple';
 
 export type AuthUser = {
   id: string;
+  name: string;
   email: string;
   method: AuthMethod;
   /** embedded Solana wallet address (Privy provisions this for real later) */
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await new Promise((r) => setTimeout(r, 800)); // pretend OAuth + wallet creation
       const newUser: AuthUser = {
         id: `mock_${Date.now()}`,
+        name: 'Chad Rai',
         email: method === 'google' ? 'chad@gmail.com' : 'chad@icloud.com',
         method,
         walletAddress: fakeSolanaAddress(),

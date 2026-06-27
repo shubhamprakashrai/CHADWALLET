@@ -25,6 +25,7 @@ export type AuthMethod = 'google' | 'apple';
 
 export type AuthUser = {
   id: string;
+  name: string;
   email: string;
   method: AuthMethod;
   /** embedded Solana wallet address (Privy provisions it on first login) */
@@ -52,10 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const accounts = privyUser?.linked_accounts ?? [];
   const google = accounts.find((a) => a.type === 'google_oauth');
   const apple = accounts.find((a) => a.type === 'apple_oauth');
-  const oauth = (google ?? apple) as { email?: string } | undefined;
+  const oauth = (google ?? apple) as { email?: string; name?: string } | undefined;
   const user: AuthUser | null = privyUser
     ? {
         id: privyUser.id,
+        // Google/Apple display name; fall back to the email prefix.
+        name: oauth?.name ?? oauth?.email?.split('@')[0] ?? 'User',
         email: oauth?.email ?? '',
         method: google ? 'google' : 'apple',
         walletAddress,

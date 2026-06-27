@@ -30,6 +30,8 @@ export default function AccountScreen() {
 
   // the real embedded-wallet address from auth (falls back to mock if missing)
   const walletAddress = user?.walletAddress ?? PORTFOLIO.walletAddress;
+  // display name: real Google/Apple name, else the email prefix
+  const displayName = user?.name || user?.email?.split('@')[0] || 'Guest';
 
   // real holdings + net worth (Alchemy + Jupiter); falls back to demo data
   const { data: portfolio, isRefetching, refetch } = usePortfolio(walletAddress);
@@ -126,11 +128,11 @@ export default function AccountScreen() {
 
         {/* signed-in account + sign out */}
         <View className="mx-4 mt-4 flex-row items-center gap-3 rounded-2xl bg-surface p-4">
-          <Avatar label={user?.email ?? 'C'} color="#22E06B" size={36} />
+          <Avatar label={displayName} color="#22E06B" size={40} />
           <View className="flex-1">
-            <Text className="text-sm font-semibold text-text">{user?.email ?? 'Guest'}</Text>
-            <Text className="text-xs text-text-secondary capitalize">
-              {user ? `${user.method} login` : 'Not signed in'}
+            <Text className="text-[15px] font-semibold text-text">{user ? displayName : 'Guest'}</Text>
+            <Text className="text-xs text-text-secondary">
+              {user ? user.email : 'Not signed in'}
             </Text>
           </View>
           <Pressable
