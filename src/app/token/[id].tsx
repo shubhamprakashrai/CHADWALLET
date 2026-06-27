@@ -13,7 +13,9 @@ import { ScreenHeader } from '@/components/screen-header';
 import { SegmentTabs } from '@/components/segment-tabs';
 import { useActivity } from '@/hooks/use-activity';
 import { useBuyQuote } from '@/hooks/use-quote';
+import { useSolPrice } from '@/hooks/use-sol-price';
 import { useToken, useTokenChart } from '@/hooks/use-token';
+import { useTrade } from '@/hooks/use-trade';
 import { useWatchlist } from '@/hooks/use-watchlist';
 import type { ChartRange } from '@/lib/birdeye';
 import { compact, formatTokenPrice, formatUsd } from '@/lib/format';
@@ -38,6 +40,9 @@ export default function TokenDetailScreen() {
   const { isStarred, toggle } = useWatchlist(user?.id);
   const { data: quote, isFetching: quoting } = useBuyQuote(id, buyUsd);
   const { data: activities = [] } = useActivity(user?.walletAddress);
+  const trade = useTrade();
+  const { data: solPrice = 0 } = useSolPrice();
+  const [buying, setBuying] = useState(false);
   const starred = isStarred(id);
 
   if (isLoading && !token) {
@@ -152,13 +157,24 @@ export default function TokenDetailScreen() {
             <PillButton
               label="Buy"
               variant="primary"
-              onPress={() =>
-                Alert.alert(
-                  'Buy ' + token.symbol,
-                  `Buy ${buyUsd ? '$' + buyUsd + ' of ' : ''}${token.symbol}? Confirm with your wallet.`,
-                  [{ text: 'Cancel', style: 'cancel' }, { text: 'Buy' }],
-                )
-              }
+              loading={buying}
+              onPress={async () => {
+                const amt = buyUsd ?? 10;
+                if (!solPrice) {
+                  Alert.alert('One sec', 'Fetching SOL price — tap Buy again.');
+                  return;
+                }
+                setBuying(true);
+                try {
+                  // real swap: SOL → token, signed by the Privy wallet
+                  const sig = await trade.buy(id, amt, solPrice);
+                  Alert.alert('🎉 Bought ' + token.symbol, `On-chain! Tx ${sig.slice(0, 10)}…`);
+                } catch (e) {
+                  Alert.alert('Buy failed', e instanceof Error ? e.message : 'Please try again.');
+                } finally {
+                  setBuying(false);
+                }
+              }}
             />
           </View>
           <View className="flex-1">
