@@ -6,8 +6,10 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/auth/auth-context';
 import { PillButton } from '@/components/pill-button';
 import { ScreenHeader } from '@/components/screen-header';
+import { launchCoin } from '@/lib/coins';
 
 /**
  * LAUNCH ("/launch") — "Launch Meme Coin" form: image, name, ticker, socials.
@@ -16,6 +18,7 @@ import { ScreenHeader } from '@/components/screen-header';
  */
 export default function LaunchScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [image, setImage] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [ticker, setTicker] = useState('');
@@ -40,12 +43,18 @@ export default function LaunchScreen() {
   const launch = async () => {
     if (!name || !ticker) return;
     setLaunching(true);
-    // demo: pretend to mint. Real launch signs + sends with the Privy wallet.
-    await new Promise((r) => setTimeout(r, 1200));
-    setLaunching(false);
-    Alert.alert('🚀 Coin launched!', `$${ticker.toUpperCase()} (${name}) is live.`, [
-      { text: 'Done', onPress: () => router.back() },
-    ]);
+    try {
+      // uploads the image to Supabase Storage + saves the coin record.
+      // (Real on-chain SPL mint via pump.fun needs the Privy wallet.)
+      await launchCoin({ userId: user?.id, name, ticker, socials: social, imageUri: image });
+      Alert.alert('🚀 Coin launched!', `$${ticker.toUpperCase()} (${name}) saved to your launches.`, [
+        { text: 'Done', onPress: () => router.back() },
+      ]);
+    } catch (e) {
+      Alert.alert('Launch failed', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setLaunching(false);
+    }
   };
 
   return (
