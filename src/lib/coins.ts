@@ -3,6 +3,27 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import { hasSupabase, supabase } from '@/lib/supabase';
 
+export type LaunchedCoin = {
+  id: string;
+  name: string;
+  ticker: string;
+  image_url: string | null;
+  socials: string | null;
+  created_at: string;
+};
+
+/** A user's launched coins, newest first. */
+export async function fetchLaunches(userId: string): Promise<LaunchedCoin[]> {
+  if (!hasSupabase) return [];
+  const { data, error } = await supabase
+    .from('coins')
+    .select('id, name, ticker, image_url, socials, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as LaunchedCoin[];
+}
+
 export type LaunchCoinInput = {
   userId?: string;
   name: string;

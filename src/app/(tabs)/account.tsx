@@ -13,6 +13,7 @@ import { ChangeBadge } from '@/components/change-badge';
 import { LineChart } from '@/components/line-chart';
 import { SegmentTabs } from '@/components/segment-tabs';
 import { useActivity } from '@/hooks/use-activity';
+import { useLaunches } from '@/hooks/use-launches';
 import { usePortfolio } from '@/hooks/use-portfolio';
 import { compact, formatUsd } from '@/lib/format';
 import { HOLDINGS, PORTFOLIO, RANGE_TABS } from '@/lib/mock';
@@ -40,6 +41,8 @@ export default function AccountScreen() {
 
   // recent wallet activity (real tx signatures from Alchemy, demo fallback)
   const { data: activities = [] } = useActivity(walletAddress);
+  // coins the user has launched (Supabase)
+  const { data: launches = [] } = useLaunches(user?.id);
 
   const copyAddress = useCallback(async () => {
     await Clipboard.setStringAsync(walletAddress);
@@ -105,6 +108,25 @@ export default function AccountScreen() {
             </View>
           </View>
         ))}
+
+        {/* your launched coins (from the Launch flow → Supabase) */}
+        {launches.length > 0 && (
+          <>
+            <Text className="mb-1 mt-7 px-4 text-xl font-bold text-text">Your launches</Text>
+            {launches.map((c) => (
+              <Pressable key={c.id} className="flex-row items-center gap-3 px-4 py-3 active:bg-surface">
+                <Avatar label={c.ticker} color="#22E06B" uri={c.image_url ?? undefined} size={40} />
+                <View className="flex-1">
+                  <Text className="text-[15px] font-semibold text-text">{c.name}</Text>
+                  <Text className="text-xs text-text-secondary">${c.ticker}</Text>
+                </View>
+                <View className="rounded-full bg-surface2 px-3 py-1">
+                  <Text className="text-xs font-semibold text-primary">Launched</Text>
+                </View>
+              </Pressable>
+            ))}
+          </>
+        )}
 
         {/* activity */}
         <Text className="mb-1 mt-7 px-4 text-xl font-bold text-text">Activity</Text>
