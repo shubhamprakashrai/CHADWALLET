@@ -1,33 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KolCard } from '@/components/kol-card';
 import { SegmentTabs } from '@/components/segment-tabs';
 import { TokenRow } from '@/components/token-row';
+import { useKolFeed } from '@/hooks/use-kol-feed';
 import { useTrending } from '@/hooks/use-trending';
-import { HOME_TABS, KOL_TRADES } from '@/lib/mock';
+import { HOME_TABS } from '@/lib/mock';
 
 /**
  * HOME  ("/")  — the live trading feed.
- * Tabs: Live / KOLs / # Memecoin / Trending. Live & KOLs show trader cards
- * (mock — the KOL feed needs Codex, deferred); Trending / # Memecoin show the
- * real Birdeye token list via useTrending().
+ * Tabs: Live / KOLs / # Memecoin / Trending. Live & KOLs show REAL on-chain
+ * trades from Codex (useKolFeed); Trending / # Memecoin show the real Birdeye
+ * token list via useTrending().
  */
 export default function HomeScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<string>('KOLs');
 
   const { data: tokens = [], isRefetching, refetch } = useTrending();
-
-  // the KOL feed is still mock, so it keeps a simple simulated refresh
-  const [kolRefreshing, setKolRefreshing] = useState(false);
-  const onKolRefresh = useCallback(() => {
-    setKolRefreshing(true);
-    setTimeout(() => setKolRefreshing(false), 900);
-  }, []);
+  const { data: kolTrades = [], isRefetching: kolRefetching, refetch: refetchKol } = useKolFeed();
 
   const showTokens = tab === 'Trending' || tab === '# Memecoin';
 
@@ -61,11 +56,11 @@ export default function HomeScreen() {
         />
       ) : (
         <FlatList
-          data={KOL_TRADES}
+          data={kolTrades}
           keyExtractor={(k) => k.id}
           renderItem={({ item }) => <KolCard trade={item} />}
           refreshControl={
-            <RefreshControl refreshing={kolRefreshing} onRefresh={onKolRefresh} tintColor="#22E06B" />
+            <RefreshControl refreshing={kolRefetching} onRefresh={() => refetchKol()} tintColor="#22E06B" />
           }
         />
       )}
