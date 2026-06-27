@@ -1,23 +1,30 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NumPad } from '@/components/num-pad';
 import { PillButton } from '@/components/pill-button';
 import { ScreenHeader } from '@/components/screen-header';
-
-const SOL_PRICE = 19.82; // mock; Phase 5 pulls live SOL/USD
+import { useSolPrice } from '@/hooks/use-sol-price';
 
 /**
  * DEPOSIT  ("/deposit") — presented as a modal (see root _layout).
- * Enter a USD amount on the keypad; we show the SOL equivalent + a MoonPay
- * provider chip, matching the real Deposit SOL screen.
+ * Enter a USD amount on the keypad; we show the live SOL equivalent + the MoonPay
+ * provider. (The real MoonPay on-ramp opens with a MoonPay key.)
  */
 export default function DepositScreen() {
   const router = useRouter();
   const [amount, setAmount] = useState('20');
-  const sol = (Number(amount || '0') / SOL_PRICE).toFixed(3);
+  const { data: solPrice = 0 } = useSolPrice();
+  const sol = solPrice ? (Number(amount || '0') / solPrice).toFixed(3) : '—';
+
+  const onDeposit = () => {
+    Alert.alert('Deposit via MoonPay', `Add $${amount} (≈ ${sol} SOL) to your wallet.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Continue', onPress: () => router.back() },
+    ]);
+  };
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-bg">
@@ -41,7 +48,7 @@ export default function DepositScreen() {
       </View>
 
       <View className="px-4">
-        <PillButton label="Deposit" onPress={() => router.back()} />
+        <PillButton label="Deposit" onPress={onDeposit} />
       </View>
 
       <NumPad value={amount} onChange={setAmount} />

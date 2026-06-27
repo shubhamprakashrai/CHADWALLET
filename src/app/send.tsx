@@ -1,17 +1,29 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Alert, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NumPad } from '@/components/num-pad';
 import { PillButton } from '@/components/pill-button';
 import { ScreenHeader } from '@/components/screen-header';
 
-/** SEND ("/send") — amount keypad + recipient address. Wired to Jupiter/transfer in Phase 7. */
+/** SEND ("/send") — amount keypad + recipient address. The transfer is signed by the
+ *  Privy embedded wallet (wired with the dev build); here it confirms the details. */
 export default function SendScreen() {
   const router = useRouter();
   const [amount, setAmount] = useState('0');
   const [to, setTo] = useState('');
+
+  const onSend = () => {
+    if (!to.trim()) {
+      Alert.alert('Recipient needed', 'Enter a wallet address or @username to send to.');
+      return;
+    }
+    Alert.alert('Confirm send', `Send $${amount} to ${to.trim()}? Confirm with your wallet.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Send', onPress: () => router.back() },
+    ]);
+  };
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-bg">
@@ -36,7 +48,7 @@ export default function SendScreen() {
       </View>
 
       <View className="px-4">
-        <PillButton label="Send" onPress={() => router.back()} disabled={amount === '0'} />
+        <PillButton label="Send" onPress={onSend} disabled={amount === '0'} />
       </View>
 
       <NumPad value={amount} onChange={setAmount} />
